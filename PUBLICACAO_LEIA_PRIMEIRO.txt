@@ -1,0 +1,8 @@
+Rotas Vivas - Publicacao Alfa 0.6
+O GitHub e a Railway ja estao conectados pelo ChatGPT. 
+Clique duas vezes em PUBLICAR_E_JOGAR.bat (na pasta extraida).
+Se o GitHub pedir login, autorize no seu navegador.
+O programa enviara todos os fontes do jogo ao seu repositorio rotas-vivas.
+A Railway iniciara o deploy automaticamente.
+O jogo ainda precisa de URL publica e volume persistente para operar sem perda dos dados.
+Nao apague seus arquivos de salvamento atuais nem coloque dados pessoais no repositorio publico.

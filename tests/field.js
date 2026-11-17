@@ -1,0 +1,45 @@
+'use strict';
+const assert=require('node:assert/strict');
+const F=require('../field');
+const now=Date.UTC(2026,10,17,12,0,0);
+const world={code:'ATEST',money:1000,intel:0,reputation:0,players:{},field:F.create()};
+const p={id:'a',name:'Ana',fieldExpedition:null,fieldRuns:0,fieldDay:'',fieldToday:0};world.players.a=p;
+const event=(id,step=0,x=-26000,y=-13200,at=now)=>F.step(world,p,{id,cell:{x:x+step*2,y},accuracy:12,ageMs:8000,speed:1.2},at);
+assert.throws(()=>F.start(world,p,'unknown',now),/válido/);
+F.start(world,p,'infra',now);const id=p.fieldExpedition.id;
+assert.throws(()=>F.start(world,p,'infra',now),/Finalize/);
+assert.throws(()=>F.step(world,p,{id,cell:{x:1,y:2},accuracy:120,ageMs:300,speed:0},now),/Precisão/);
+assert.throws(()=>F.step(world,p,{id,cell:{x:1,y:2},accuracy:15,ageMs:999999,speed:0},now),/antiga/);
+assert.throws(()=>F.step(world,p,{id,cell:{x:1,y:2},accuracy:15,ageMs:0,speed:14},now),/veículo/);
+assert.throws(()=>F.step(world,p,{id:'xx',cell:{x:1,y:2},accuracy:10,ageMs:0},now),/outra/);
+assert.throws(()=>F.step(world,p,{id,cell:{x:3.2,y:4},accuracy:10,ageMs:0},now),/inválida/);
+assert.equal(event(id,0,-26000,-13200,now).step,1);
+assert.equal(world.intel,0,'nenhuma recompensa integral na primeira etapa');
+assert.throws(()=>event(id,0,-26000,-13200,now+5000),/já registrou/);
+assert.throws(()=>event(id,1,-26000,-13200,now+12000),/Aguarde/);
+assert.throws(()=>event(id,1,-26000,-13200,now+12000),/Aguarde/);
+assert.throws(()=>F.step(world,p,{id,cell:{x:-25999,y:-13200},accuracy:12,ageMs:0,speed:1},now+85000),/Setor muito próximo/);
+assert.equal(event(id,1,-26000,-13200,now+85000).step,2);
+assert.throws(()=>event(id,2,-26000,-13200,now+90000),/Aguarde/);
+const result=event(id,2,-26000,-13200,now+170000);
+assert.equal(result.finished,true);assert.equal(result.signals,2);assert.equal(world.field.completed,1);assert.equal(world.field.signals,2);assert.equal(world.field.visited.length,3);assert.equal(world.intel,3);assert.equal(p.fieldRuns,1);assert.equal(p.fieldToday,1);assert.equal(p.fieldExpedition,null);
+assert.equal(F.publicBoard(world).visitedCount,3);assert.ok(!('visited' in F.publicBoard(world)));assert.equal(F.publicPlayer(p).steps,0);
+assert.throws(()=>F.build(world,'feira'),/correspondente/);
+assert.equal(F.build(world,'cartografia').message.includes('operação'),true);assert.equal(world.field.projects.cartografia,true);assert.equal(world.field.signals,0);
+assert.throws(()=>F.build(world,'cartografia'),/já/);
+// Rota de volta aos setores anteriores: ganha só um sinal, em vez de dois.
+F.start(world,p,'natureza',now+300000);let second=p.fieldExpedition.id;
+event(second,0,-26000,-13200,now+300000);event(second,1,-26000,-13200,now+385000);const repeat=event(second,2,-26000,-13200,now+470000);assert.equal(repeat.signals,1);assert.equal(world.field.visited.length,3);
+// Uma terceira expedição e o limite diário impedem farm ilimitado.
+F.start(world,p,'comercio',now+550000);let third=p.fieldExpedition.id;event(third,0,-26000,-13200,now+550000);event(third,1,-26000,-13200,now+635000);event(third,2,-26000,-13200,now+720000);assert.equal(p.fieldToday,3);assert.throws(()=>F.start(world,p,'infra',now+800000),/três/);
+assert.equal(world.field.combos,1);assert.equal(world.field.signals,4,'bônus coletivo de três temas');
+world.missions=[];world.nodes=[{stock:5,max:50},{stock:20,max:65}];world.towns=[{name:'Cidade Alfa',prosperity:35},{name:'Cidade Beta',prosperity:65}];
+assert.equal(F.dispatch(world,'rota').key,'rota');assert.equal(world.field.signals,3);
+assert.equal(F.dispatch(world,'reflorestamento').key,'reflorestamento');assert.equal(world.nodes[0].stock,20);
+assert.equal(F.dispatch(world,'cidades').key,'cidades');assert.equal(world.towns[0].prosperity,47);assert.equal(world.field.signals,0);
+assert.throws(()=>F.dispatch(world,'cidades'),/Faltam/);assert.throws(()=>F.dispatch(world,'invalid'),/desconhecida/);
+// Reinicia no dia UTC seguinte; persistência não inventa coordenadas no estado público.
+const tomorrow=now+86400000;F.start(world,p,'infra',tomorrow);assert.equal(F.publicPlayer(p,tomorrow).today,0);assert.ok(F.privateStatus(p).lastCell===null);F.abandon(p);
+const old={code:'OLD',money:500,players:{b:{id:'b',name:'Bruno'}},reputation:0,intel:0};F.migrate(old);assert.equal(old.field.signals,0);assert.equal(old.players.b.fieldRuns,0);
+assert.ok(F.cellsToMeters({x:0,y:0},{x:1,y:0})>145);
+console.log('OK: expedições por setores, prova GPS, distância, relógio, recompensa, projetos, limite diário, migração e privacidade do estado público.');

@@ -1,0 +1,23 @@
+ROTAS VIVAS · ALFA 0.6
+
+PC
+1. Extraia este ZIP.
+2. Execute JOGAR.bat (Windows).
+3. Crie uma sala e comece pela operação principal no mapa.
+4. Clique nos locais para interagir. O botão GESTÃO abre os painéis avançados.
+
+CELULAR + GPS
+O GPS fora de localhost precisa de publicação HTTPS. No aplicativo, selecione
+"Explorar GPS", autorize a localização e clique em "Encontrar lugares".
+Os ícones são pontos de interesse mapeados no OpenStreetMap (se disponíveis).
+Selecione um marcador, caminhe apenas por locais públicos seguros e registre
+a visita quando estiver perto. Os locais públicos não têm acesso garantido.
+
+NOTA SOBRE O DEPLOY
+Arquivos Dockerfile e railway.json estão preparados. Para publicar na Railway
+é necessário ter um repositório GitHub do jogo conectado à Railway, um
+volume persistente em /app/data e domínio HTTPS. Consulte DEPLOY_RAILWAY.md.
+
+QUALIDADE
+19 suítes de testes automatizados passaram em ambiente de desenvolvimento.
+O GPS na rua e as consultas OSM de um navegador real ainda precisam de teste.

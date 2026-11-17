@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1619"><meta name="description" content="Rotas Vivas — um jogo cooperativo de geolocalização, projetos regionais, logística e economia.">
+  <link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/styles.css">
+  <title>Rotas Vivas — Alfa 0.6</title>
+</head>
+<body class="world-first mode-pc">
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="brand"><div class="brand-icon">↗</div><div><strong>ROTAS <em>VIVAS</em></strong><small>COOPERATIVA · ALFA 0.6</small></div></div>
+    <div class="top-stats">
+      <div class="top-stat"><small>CAIXA DA EQUIPE</small><strong id="money">◆ 1.100</strong></div>
+      <div class="top-stat"><small>PESQUISAS</small><strong id="intel">◈ 0</strong></div>
+      <div class="top-stat"><small>REPUTAÇÃO</small><strong id="reputation">★ 0</strong></div><div class="top-stat field-top"><small>SINAIS DE CAMPO</small><strong id="fieldSignals">◎ 0</strong></div>
+    </div>
+    <div class="top-actions"><button id="panelToggle" class="btn small outline" title="Abrir inventário e contratos">☰ <span>Gestão</span></button><span class="connection" id="connection">● Desconectado</span><button id="shareBtn" class="btn small outline" title="Copiar link da sala">⤴ <span>Convidar</span></button><button class="circle-btn" id="helpBtn" title="Ajuda">?</button></div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar leftbar"><button id="closePanels" class="btn small outline panel-close">✕ Voltar ao mapa</button>
+      <div class="section-title"><span>PAINEL DA COOPERATIVA</span><span id="dayCount">DIA 01</span></div>
+      <div class="panel boxed"><div class="panel-title">Operadores <span class="count" id="onlineCount">0/4</span></div><div id="playersList" class="players-list"><span class="muted">Aguardando conexão...</span></div></div>
+      <div class="panel boxed"><div class="panel-title">Primeiros passos <span class="hint" id="milestoneCount">0/5</span></div><div id="milestones" class="milestone-list"></div></div>
+      <div class="panel boxed"><div class="panel-title">Estoque do depósito <span class="hint">Base</span></div><div class="inventory" id="inventory"></div><div class="muted smallnote">Para carregar ou descarregar, estacione na base.</div></div>
+      <div class="panel boxed"><div class="panel-title">Complexo industrial</div><div class="muted smallnote">Produção automática inicia pausada; você controla quando ativar.</div><div id="factories" class="factory-list"></div></div>
+      <div class="panel boxed"><div class="panel-title">Tecnologias da cooperativa <span class="hint">PERMANENTES</span></div><div id="upgrades" class="upgrade-list"></div></div>
+      <div class="panel boxed"><div class="panel-title">Caminhão <span class="hint" id="cargoCount">0/20</span></div><div id="cargo" class="cargo"></div><div class="inline-actions"><button class="btn small" id="unloadBtn">Descarregar tudo</button><button class="btn small outline" id="baseBtn">↗ Ir à base</button></div></div>
+    </aside>
+    <section class="world">
+      <div class="map-heading"><div><span class="eyebrow">ROTAS VIVAS · UM MUNDO COMPARTILHADO</span><h1>Explore, construa e transforme<span class="live-dot"></span></h1></div><div class="view-switch"><button class="selected" id="pcMode">◈ Operação</button><button id="gpsMode">◎ Explorar GPS</button></div></div>
+      <div class="map-frame">
+        <canvas id="map" aria-label="Mapa com cartografia real e rotas fictícias"></canvas>
+        <div class="map-fade"></div><div class="gps-waypoint" id="gpsWaypoint" hidden></div>
+        <div class="quick-action" id="quickAction" hidden></div>
+        <div class="map-top"><div class="map-chip"><span class="pulse-dot"></span><span id="mapSubtitle">São Paulo · rotas simuladas sobre OSM</span></div><button class="map-chip map-btn" id="recenterBtn">⌖ Recentrar</button></div>
+        <div class="map-zoom"><button id="zoomIn" aria-label="Aproximar">+</button><button id="zoomOut" aria-label="Afastar">−</button></div>
+        <div class="map-bottom"><span>© <a href="https://www.openstreetmap.org/copyright" rel="noopener" target="_blank">OpenStreetMap</a> contributors · pontos e rotas do jogo são fictícios</span><span id="coordinates">23.83° S · 46.71° O</span></div>
+        <div class="drive-help" id="driveHelp">W A S D <span>dirigir</span> · E <span>interagir</span> · Clique nos pontos para selecionar destinos</div>
+        <div class="mobile-drive" id="mobileDrive"><button data-dx="0" data-dy="1">↑</button><div><button data-dx="-1" data-dy="0">←</button><button data-dx="0" data-dy="-1">↓</button><button data-dx="1" data-dy="0">→</button></div></div>
+      </div>
+      <div class="goal-strip" id="goalHint"><span>Aguardando sua cooperativa...</span></div>
+      <div class="map-footer"><span class="statusline">◉ <span id="statusText">Selecione um local no mapa para interagir.</span></span><span id="distanceText">Caminhão pronto</span></div>
+      <div class="mobile-tabs"><button class="selected" data-mobile="map">🗺️ Mapa</button><button data-mobile="actions">📋 Contratos</button><button data-mobile="base">🏭 Base</button></div>
+    </section>
+    <aside class="sidebar rightbar">
+      <div class="section-title"><span>OPERAÇÕES ATIVAS</span><span id="tasksCount">03 CONTRATOS</span></div>
+      <div class="panel boxed selected-place"><div class="panel-title">LOCAL SELECIONADO <span class="hint">INTERAÇÃO</span></div><div id="selectedPlace" class="selected-inner"><span class="muted">Toque em um ponto no mapa.</span></div></div>
+      <div class="panel boxed"><div class="panel-title">Projetos regionais <span class="hint" id="projectsCount">0 DESCOBERTOS</span></div><div id="projects" class="project-list"></div></div>
+      <div class="panel boxed" id="eventPanel" hidden><div class="panel-title">Mercado em movimento</div><div id="eventDetail" class="event-detail"></div></div>
+      <div class="panel boxed"><div class="panel-title">Expedições reais <span class="hint" id="fieldCount">0 CONCLUÍDAS</span></div><div id="fieldBoard" class="field-board"></div></div>
+      <div class="panel boxed"><div class="panel-title">Objetivos coletivos <span class="hint">SEM FIM LINEAR</span></div><div id="initiatives" class="initiatives-list"></div></div>
+      <div class="panel boxed"><div class="panel-title">Saúde das cidades <span class="hint">OFERTA × DEMANDA</span></div><div id="townsState" class="towns-list"></div></div>
+      <div class="panel boxed"><div class="panel-title">Operações de campo <span class="hint" id="missionsCount">0 ATIVAS</span></div><div id="missions" class="mission-list"></div></div>
+      <div class="panel contracts-panel"><div class="panel-title">Contratos regionais <span class="hint">TEMPO REAL</span></div><div id="contracts" class="contract-list"></div></div>
+      <div class="panel boxed"><div class="panel-title">Mercados regionais</div><div id="market" class="market"></div></div>
+      <div class="panel boxed"><div class="panel-title">Comunicação da equipe <span class="hint">SALA PRIVADA</span></div><div id="chatMessages" class="chat-messages"></div><form id="chatForm" class="chat-compose"><input id="chatInput" maxlength="160" placeholder="Mensagem para os amigos..." autocomplete="off" aria-label="Mensagem para o grupo"><button class="btn small primary" type="submit">Enviar</button></form></div>
+      <div class="panel boxed"><div class="panel-title">Atividade recente</div><div id="logs" class="feed"></div></div>
+    </aside>
+  </main>
+  <div class="toast-stack" id="toasts" role="status" aria-live="polite"></div>
+</div>
+<div class="veil" id="joinVeil">
+  <div class="join-card">
+    <div class="join-mark">↗</div>
+    <div class="eyebrow">UM MUNDO. QUATRO AMIGOS.</div>
+    <h2>Construa algo<br><em>que permanece.</em></h2>
+    <p>Explore lugares reais pelo GPS, transporte materiais, crie indústrias e desenvolva uma economia compartilhada.</p>
+    <label for="playerName">SEU NOME</label><input id="playerName" maxlength="20" placeholder="Como os amigos vão te chamar?" autocomplete="nickname">
+    <label for="roomCode">CÓDIGO DA SALA</label><input id="roomCode" maxlength="8" placeholder="Ex.: ROTA42" autocomplete="off">
+    <div class="join-actions"><button class="btn primary" id="joinBtn">Entrar na cooperativa ↗</button><button class="btn outline" id="newRoomBtn">Criar sala</button></div>
+    <div class="join-footer"><span>Até 4 jogadores · PC + celular</span><span id="joinStatus">Servidor aguardando...</span></div>
+  </div>
+</div>
+<div class="modal-back hidden" id="helpModal">
+ <div class="help-card"><div class="help-top"><h2>Guia de campo</h2><button class="circle-btn" id="closeHelp">×</button></div>
+  <p>Esta versão é um <strong>protótipo funcional em desenvolvimento</strong>. Os locais industriais são fictícios, posicionados sobre um mapa real.</p>
+  <ol><li><strong>Comece na base.</strong> Construa a serraria (custa dinheiro e madeira) e produza tábuas.</li><li><strong>Escolha uma entrega.</strong> Na base, toque em “Preparar e partir”: o jogo carrega os itens necessários e traça a rota.</li><li><strong>Entregue contratos.</strong> Aproximar o caminhão da cidade permite concluir entregas.</li><li><strong>Reabasteça.</strong> Vá até florestas, pedreiras e pátios e colete até 10 unidades por viagem.</li><li><strong>Escolha o que fazer com sua descoberta.</strong> Após uma caminhada, você decide como ajudar a cooperativa.</li><li><strong>Use o GPS.</strong> No celular, participe de expedições de três pontos diferentes a pé. Cada percurso gera sinais de campo que liberam infraestrutura especial. Expedições remotas continuam disponíveis para a progressão básica, mas não produzem sinais de campo.</li></ol>
+  <p class="muted">Dirija com W/A/S/D ou selecione destinos: o piloto automático usa corredores virtuais, não as ruas reais. Projetos desbloqueados por pesquisas alteram a região. GPS requer HTTPS (ou localhost) e permissão. O protótipo não salva coordenadas de GPS exatas no servidor; armazena apenas identificadores criptográficos dos quadrantes explorados. Nunca jogue ao dirigir ou entre em áreas restritas.</p>
+  <button class="btn primary" id="gotIt">Entendi, vamos jogar</button>
+ </div>
+</div>
+<script src="/isometric.js" defer></script><script src="/app.js" defer></script>
+</body></html>

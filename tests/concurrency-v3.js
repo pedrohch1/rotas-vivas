@@ -1,0 +1,24 @@
+'use strict';
+const assert=require('node:assert/strict'),{spawn}=require('node:child_process'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const root=path.join(__dirname,'..'),dir=fs.mkdtempSync(path.join(os.tmpdir(),'rv3-four-'));
+const port=39700+Math.floor(Math.random()*500),room='FOUR'+Math.floor(Math.random()*1000);
+const server=spawn(process.execPath,['server.js'],{cwd:root,env:{...process.env,PORT:String(port),DATA_DIR:dir},stdio:'pipe'});
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const clients=[];
+async function connect(name){const s=new WebSocket('ws://127.0.0.1:'+port+'/socket');await new Promise((ok,fail)=>{s.onopen=ok;s.onerror=fail});let messages=[],listeners=[];s.addEventListener('message',e=>{const data=JSON.parse(e.data);messages.push(data);for(const fn of [...listeners])fn()});
+ const wait=(pred,timeout=5500)=>new Promise((ok,fail)=>{const t=setTimeout(()=>fail(Error('time-out '+name)),timeout);const fn=()=>{const msg=messages.find(pred);if(msg){clearTimeout(t);listeners=listeners.filter(x=>x!==fn);ok(msg)}};listeners.push(fn);fn()});
+ s.send(JSON.stringify({type:'join',name,room}));await wait(x=>x.type==='joined');await wait(x=>x.type==='state');const c={s,wait,send:(action,props={})=>s.send(JSON.stringify({type:'action',action,...props}))};clients.push(c);return c;}
+(async()=>{try{let ready=false;for(let i=0;i<50;i++){await sleep(80);try{if((await fetch('http://127.0.0.1:'+port+'/health')).ok){ready=true;break}}catch{}}assert.ok(ready);
+ const all=await Promise.all(['Ana','Bruno','Carla','Diego'].map(connect));assert.equal(all.length,4);
+ for(const c of all)c.send('load',{resource:'madeira',qty:10});
+ let s=await all[0].wait(m=>m.type==='state'&&Object.values(m.world.players).reduce((n,p)=>n+(p.cargo.madeira||0),0)===14);
+ assert.equal(s.world.inventory.madeira,0);assert.equal(Object.values(s.world.players).reduce((n,p)=>n+(p.cargo.madeira||0),0),14);
+ for(const c of all)c.send('chat',{message:'Estamos abastecendo!'});
+ s=await all[0].wait(m=>m.type==='state'&&m.world.chat.length===4);assert.equal(s.world.chat.length,4);
+ assert.equal(s.world.initiatives.deliveries.tier,1);
+ all[0].send('gps',{cellHash:'8'.repeat(64),theme:'infra'});await all[0].wait(m=>m.type==='state'&&m.world.discoveries.infra===1);
+ all[1].send('gps',{cellHash:'8'.repeat(64),theme:'infra'});const invalid=await all[1].wait(m=>m.type==='notice'&&m.error&&m.message.includes('quadrante'));assert.ok(invalid);
+ all[0].send('ping',{target:'bosque'});s=await all[1].wait(m=>m.type==='state'&&m.world.pings.length===1);assert.equal(s.world.pings[0].target,'bosque');
+ assert.equal(Object.keys(s.world.players).length,4);assert.ok(s.world.money>=0);assert.ok(Object.values(s.world.inventory).every(q=>Number.isInteger(q)&&q>=0));
+ console.log('OK: 4 jogadores concorrentes, estoque atômico, chat, ping, GPS único e economia íntegra.');
+}finally{for(const c of clients)c.s.close();server.kill('SIGTERM');await sleep(250);fs.rmSync(dir,{recursive:true,force:true})}})().catch(e=>{console.error(e);process.exitCode=1});

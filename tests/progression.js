@@ -1,0 +1,11 @@
+'use strict';
+const assert=require('node:assert/strict'),P=require('../progression');
+const w={money:0,intel:0,reputation:0};P.init(w);
+assert.equal(P.goal('production',1).target,12);assert.equal(P.advance(w,'production',11),0);assert.equal(w.initiatives.production.progress,11);
+let messages=[];assert.equal(P.advance(w,'production',1,s=>messages.push(s)),1);assert.equal(w.initiatives.production.tier,2);
+assert.equal(w.money,260);assert.equal(w.intel,2);assert.equal(w.reputation,5);
+assert.equal(P.goal('production',2).target,20);assert.equal(P.advance(w,'production',49),2);assert.equal(w.initiatives.production.tier,4);assert.equal(w.initiatives.production.progress,1);
+assert.equal(P.advance(w,'production',-1),0);assert.equal(P.advance(w,'invalid',10),0);
+assert.equal(P.advance(w,'deliveries',25),1);assert.equal(P.advance(w,'recovery',20),1);
+assert.ok(messages.length===1);assert.equal(P.init(w),w.initiatives);
+console.log('OK: três metas cooperativas, recompensas, múltiplos níveis, excedente e entradas inválidas.');
