@@ -2,7 +2,7 @@
 // Exercita uma obra COMPLETA: financiamento, transporte real de materiais e mudança da rede.
 const assert=require('node:assert/strict');const {spawn}=require('node:child_process');const fs=require('node:fs');const path=require('node:path');
 const port=33500+Math.floor(Math.random()*1000),room='P'+Math.random().toString(36).slice(2,7).toUpperCase();
-const root=path.join(__dirname,'..'),server=spawn(process.execPath,['server.js'],{cwd:root,env:{...process.env,PORT:String(port),DRIVE_SPEED:'5000'},stdio:'pipe'});
+const root=path.join(__dirname,'..'),server=spawn(process.execPath,['server.js'],{cwd:root,env:{...process.env,PORT:String(port),DRIVE_SPEED:'5000',REMOTE_EXPEDITION_MS:'1000',ROUTING_ENABLED:'0'},stdio:'pipe'});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let socket,events=[],waiters=[];
 function wait(pred,timeout=9000){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Esperando '+pred.toString().slice(0,90)+'; últimas mensagens '+JSON.stringify(events.slice(-3)))),timeout);

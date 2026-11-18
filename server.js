@@ -11,8 +11,11 @@ const {grantMission,expireMissions}=require('./missions');
 const PROGRESSION=require('./progression');
 const FIELD=require('./field');
 const {loadNetwork,buildAdjacency,routeOnNetwork}=require('./osmroads');
-const DRIVE_SPEED=Math.max(5,Math.min(5000,Number(process.env.DRIVE_SPEED)||25));
-const ECONOMY_STEP_MS=Math.max(1000,Math.min(600000,Number(process.env.ECONOMY_STEP_MS)||22000));
+const NAV=require('./navigation');
+const REMOTE_EXPEDITION_MS=Math.max(1000,Math.min(3600000,Number(process.env.REMOTE_EXPEDITION_MS)||12*60*1000));
+const DRIVE_SPEED_OVERRIDE=Number(process.env.DRIVE_SPEED)>0;
+const DRIVE_SPEED=Math.max(5,Math.min(5000,Number(process.env.DRIVE_SPEED)||13));
+const ECONOMY_STEP_MS=Math.max(1000,Math.min(600000,Number(process.env.ECONOMY_STEP_MS)||120000));
 const PORT=Number(process.env.PORT||3000);
 const ROOT=path.join(__dirname,'public');
 const DATA=path.resolve(process.env.DATA_DIR||path.join(__dirname,'data'));
@@ -66,7 +69,7 @@ function upgradeWorld(w){
  w.projects??=PROJECTS.map(pr=>({...pr,delivered:{},funded:false,completed:false}));
  for(const pr of PROJECTS){let existing=w.projects.find(x=>x.id===pr.id);if(!existing)w.projects.push({...pr,delivered:{},funded:false,completed:false});
   else{Object.assign(existing,{...pr,delivered:existing.delivered||{},funded:!!existing.funded,completed:!!existing.completed});}}
- for(const player of Object.values(w.players)){player.surveys??=0;player.gpsDiscoveries??=0;
+ for(const player of Object.values(w.players)){player.surveys??=0;player.gpsDiscoveries??=0;player.remoteExpedition??=null;
   if(player.route&&!Array.isArray(player.route.points))player.route=null;
   player.mode??='pc';}
  return w;
@@ -110,13 +113,16 @@ setInterval(save,1800).unref();
 for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>{save();process.exit(0)});
 function dist(a,b){const R=6371000,dr=(b.lat-a.lat)*Math.PI/180,dl=(b.lng-a.lng)*Math.PI/180;const h=Math.sin(dr/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
 function near(p,target){return dist(p,target)<=320}
-function planTo(w,p,target){
+async function planTo(w,p,target){
  const sites=[{id:'base',...BASE},...w.nodes,...w.towns,...w.projects];
  const hasBridge=!!w.projects.find(x=>x.id==='ponte')?.completed;
- return (OSM_ROADS&&routeOnNetwork(p,target,OSM_ROADS,sites,hasBridge,OSM_ADJ))||pathFor(p,target.id,sites,hasBridge);
+ // Ponte construída continua criando um atalho fictício especial.
+ const real=!(hasBridge&&target.id==='lago')?await NAV.fetchDrivingRoute(p,target):null;
+ return real||(OSM_ROADS&&routeOnNetwork(p,target,OSM_ROADS,sites,hasBridge,OSM_ADJ))||pathFor(p,target.id,sites,hasBridge);
 }
 function commitRoute(p,target,planned){
- p.route={id:target.id,lat:target.lat,lng:target.lng,points:planned.points,index:0,meters:planned.meters};
+ const r=NAV.enrichRoute(p,planned);
+ p.route={id:target.id,lat:target.lat,lng:target.lng,points:r.points,index:0,meters:r.meters,source:r.source||'virtual',durationSeconds:r.durationSeconds,pace:r.pace};
 }
 function capText(s,n){return String(s||'').trim().replace(/[<>\x00-\x1f]/g,'').slice(0,n)}
 function ensurePlayer(ws){if(!ws.player||!ws.world||!ws.world.players[ws.player])throw Error('Entre em uma sala primeiro.');return ws.world.players[ws.player]}
@@ -139,7 +145,7 @@ function connect(ws,msg){const code=String(msg.room||'').toUpperCase().replace(/
  player.name=name;player.online=true;player.mode='pc';if(!w.owner)w.owner=player.id;ws.world=w;ws.player=player.id;
  send(ws,{type:'joined',token:player.token,room:code});log(w,`${name} entrou na cooperativa.`);dirty(w);broadcast(w);
 }
-function act(ws,msg){const w=ws.world;const p=ensurePlayer(ws);const type=msg.action;
+async function act(ws,msg){const w=ws.world;const p=ensurePlayer(ws);const type=msg.action;
  if(type==='setMode'){
   const next=String(msg.mode||'');if(!['pc','gps'].includes(next))throw Error('Modo inválido.');
   if(p.mode!==next){p.mode=next;dirty(w);broadcast(w);}return;
@@ -170,10 +176,10 @@ function act(ws,msg){const w=ws.world;const p=ensurePlayer(ws);const type=msg.ac
  if(type==='route'){
   const target=[{id:'base',...BASE},...w.nodes,...w.towns,...w.projects.filter(x=>w.discoveries[x.kind]>0)].find(s=>s.id===msg.target);
   if(!target)throw Error('Destino não encontrado ou projeto não descoberto.');
-  const planned=planTo(w,p,target);
+  const planned=await planTo(w,p,target);
   if(!planned)throw Error('Não existe uma estrada até o destino.');
   commitRoute(p,target,planned);
-  dirty(w);toast(ws,`Rota ${planned.source==='osm'?'baseada em ruas OSM':'pela malha fictícia'}: ${(planned.meters/1000).toFixed(1)} km.`);broadcast(w);return;
+  dirty(w);toast(ws,`Rota ${planned.source==='osm-driving'?'pelas ruas reais (sem tráfego ao vivo)':planned.source==='osm'?'na malha OSM':'pela malha fictícia'}: ${(planned.meters/1000).toFixed(1)} km · ${Math.max(1,Math.ceil(p.route.durationSeconds/60))} min estimados.`);broadcast(w);return;
  }
  if(type==='drive'){
   if(Date.now()-p.lastManual<115)return;
@@ -239,7 +245,8 @@ function act(ws,msg){const w=ws.world;const p=ensurePlayer(ws);const type=msg.ac
   const capacity=(w.factories.logistica?32:20)+(w.upgrades.fleet?12:0);
   if(missing>capacity-inventoryQty(p.cargo))throw Error('O caminhão não tem espaço para esta entrega. Descarregue materiais na base.');
   if((w.inventory[resource]||0)<missing)throw Error(`Faltam ${missing-(w.inventory[resource]||0)} × ${RES[resource].name} no depósito. Colete recursos ou produza antes de partir.`);
-  const planned=planTo(w,p,town);if(!planned)throw Error('Ainda não existe uma rota até esta cidade.');
+  const planned=await planTo(w,p,town);if(!planned)throw Error('Ainda não existe uma rota até esta cidade.');
+  if((w.inventory[resource]||0)<missing)throw Error('Estoque alterado durante o cálculo da rota. Tente novamente.');
   if(missing){w.inventory[resource]-=missing;p.cargo[resource]=(p.cargo[resource]||0)+missing;}
   commitRoute(p,town,planned);
   log(w,`🚚 ${p.name} preparou ${job.qty} × ${RES[resource].name} e saiu para ${town.name}.`);
@@ -291,10 +298,11 @@ function act(ws,msg){const w=ws.world;const p=ensurePlayer(ws);const type=msg.ac
   toast(ws,`Levantamento confirmado: ${DISCOVERY[kind]}. Confira os projetos regionais.`);dirty(w);broadcast(w);return;
  }
  if(type==='virtual'){
-  if(Date.now()-p.lastVirtual<45000)throw Error('A expedição remota ainda está em preparação.');
-  if(w.money<85)throw Error('São necessários 85 créditos.');w.money-=85;w.intel+=1;p.lastVirtual=Date.now();w.surveys++;p.surveys++;
-  if(w.surveys%2===0){const options=['infra','comercio','natureza'].sort((a,b)=>w.discoveries[a]-w.discoveries[b]);unlockDiscovery(w,options[0],p.name+' (expedição remota)');rewardMilestone(w,'primeiraDescoberta','primeira descoberta regional',65);}
-  log(w,`🛰️ ${p.name} financiou uma expedição remota: +1 pesquisa${w.surveys%2===0?' e uma descoberta':''}.`);dirty(w);broadcast(w);return;
+  if(p.remoteExpedition)throw Error('Uma expedição remota já está em andamento. Acompanhe no modo GPS.');
+  if(w.money<85)throw Error('São necessários 85 créditos para enviar a equipe remota.');
+  const now=Date.now();w.money-=85;p.lastVirtual=now;p.remoteExpedition={startedAt:now,readyAt:now+REMOTE_EXPEDITION_MS};
+  log(w,`🛰️ ${p.name} iniciou uma expedição remota: retorno em ${Math.ceil(REMOTE_EXPEDITION_MS/60000)} min. Caminhadas presenciais oferecem vantagens exclusivas.`);
+  dirty(w);effect(ws,'remote',`Expedição enviada! Retorno em ${Math.ceil(REMOTE_EXPEDITION_MS/60000)} min.`);broadcast(w);return;
  }
  if(type==='completeMission'){
   const id=Number(msg.id),m=w.missions.find(m=>m.id===id);if(!m)throw Error('Esta operação não está mais disponível.');
@@ -331,8 +339,16 @@ function act(ws,msg){const w=ws.world;const p=ensurePlayer(ws);const type=msg.ac
  throw Error('Ação desconhecida.');
 }
 function gameTick(){const now=Date.now();for(const w of rooms.values()){
- // Sala inativa fica congelada: uma noite offline não expira contratos nem consome estoques.
+ // Sala inativa congela a economia; expedições remotas usam o relógio real.
  if(!Object.values(w.players).some(p=>p.online))continue;
+ let finishedRemote=false;
+ for(const p of Object.values(w.players)){
+  if(!p.remoteExpedition||p.remoteExpedition.readyAt>now)continue;
+  p.remoteExpedition=null;w.intel+=1;w.surveys++;p.surveys++;finishedRemote=true;
+  if(w.surveys%2===0){const options=['infra','comercio','natureza'].sort((a,b)=>w.discoveries[a]-w.discoveries[b]);unlockDiscovery(w,options[0],p.name+' (expedição remota)');rewardMilestone(w,'primeiraDescoberta','primeira descoberta regional',65);}
+  log(w,`🛰️ Expedição remota de ${p.name} concluída: +1 pesquisa${w.surveys%2===0?' e uma descoberta':''}.`);
+ }
+ if(finishedRemote){dirty(w);broadcast(w);}
  // Expedições GPS são atividades reais, de vários minutos. Se todos estão
  // caminhando, o relógio econômico, os veículos e as fábricas aguardam.
  // Se ao menos um operador continua no PC, o mundo permanece em andamento.
@@ -343,7 +359,7 @@ function gameTick(){const now=Date.now();for(const w of rooms.values()){
  const beforePings=w.pings.length;w.pings=w.pings.filter(x=>x.expires>now);if(w.pings.length!==beforePings)changed=true;
  for(const p of Object.values(w.players)){
   if(!p.route)continue;
-  let remaining=DRIVE_SPEED*(w.upgrades.navigation?1.35:1)*(w.field.projects.cartografia?1.15:1),iterations=0;
+  let remaining=(DRIVE_SPEED_OVERRIDE?DRIVE_SPEED:(p.route.pace||DRIVE_SPEED))*(w.upgrades.navigation?1.35:1)*(w.field.projects.cartografia?1.15:1),iterations=0;
   while(p.route&&remaining>0&&iterations++<24){
    const next=p.route.points[p.route.index];
    if(!next){p.lat=p.route.lat;p.lng=p.route.lng;
@@ -400,7 +416,11 @@ srv.on('upgrade',(req,socket)=>{
    if(opcode===8){socket.end();return}
    if(opcode===9){socket.write(Buffer.from([0x8a,0]));continue}
    if(opcode!==1)continue;
-   try{const msg=JSON.parse(buf.toString('utf8'));const now=Date.now();if(now-ws.rateStart>=1000){ws.rateStart=now;ws.rateCount=0;}if(++ws.rateCount>25)throw Error('Muitas ações ao mesmo tempo; tente novamente.');if(msg.type==='join')connect(ws,msg);else if(msg.type==='action')act(ws,msg);else throw Error('Mensagem inválida.');}
+   try{const msg=JSON.parse(buf.toString('utf8'));const now=Date.now();if(now-ws.rateStart>=1000){ws.rateStart=now;ws.rateCount=0;}if(++ws.rateCount>25)throw Error('Muitas ações ao mesmo tempo; tente novamente.');if(msg.type==='join')connect(ws,msg);else if(msg.type==='action'){
+    if((ws.pendingActions||0)>=12)throw Error('Muitas ações pendentes. Aguarde a rota anterior.');
+    ws.pendingActions=(ws.pendingActions||0)+1;
+    ws.actionQueue=(ws.actionQueue||Promise.resolve()).then(()=>act(ws,msg)).catch(e=>toast(ws,e.message||'Não foi possível executar a ação.',true)).finally(()=>{ws.pendingActions--;});
+   }else throw Error('Mensagem inválida.');}
    catch(e){toast(ws,e.message||'Ocorreu um erro.',true)}
   }
  });

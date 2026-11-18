@@ -1,0 +1,27 @@
+name: Testar Rotas Vivas
+on:
+  push:
+    branches: [main, feature/alfa-0-8-rotas-remotas]
+  pull_request:
+    branches: [main]
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar sintaxe
+        run: |
+          node --check server.js
+          node --check navigation.js
+          node --check public/app.js
+          node --check public/guide-v7.js
+      - name: Executar testes de regressão
+        env:
+          ROUTING_ENABLED: '0'
+        run: npm test

@@ -1,6 +1,6 @@
 FROM node:22-alpine
 WORKDIR /app
-COPY package.json server.js roads.js economy.js missions.js progression.js osmroads.js field.js ./
+COPY package.json server.js navigation.js roads.js economy.js missions.js progression.js osmroads.js field.js ./
 COPY public ./public
 RUN mkdir -p /app/data
 ENV NODE_ENV=production

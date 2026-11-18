@@ -1,12 +1,12 @@
 {
   "name": "rotas-vivas",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "commonjs",
-  "description": "Rotas Vivas 0.6 tutorial, HUD de carga e objetivos regionais",
+  "description": "Rotas Vivas: rotas de carro, campanhas e expedições remotas com tempo real",
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/guide-v7.js && node tests/scene-v6.js && node tests/choices-v5.js && node tests/delivery-v5.js && node tests/mode-v5.js && node tests/field.js && node tests/poi.js && node tests/atlas.js && node tests/field-integration.js && node tests/field-concurrency.js && node tests/roads.js && node tests/osm.js && node tests/economy.js && node tests/progression.js && node tests/ui.js && node tests/smoke.js && node tests/projects.js && node tests/integration-v3.js && node tests/security-v3.js && node tests/concurrency-v3.js",
+    "test": "node tests/navigation-v8.js && node tests/remote-v8.js && node tests/guide-v7.js && node tests/scene-v6.js && node tests/choices-v5.js && node tests/delivery-v5.js && node tests/mode-v5.js && node tests/field.js && node tests/poi.js && node tests/atlas.js && node tests/field-integration.js && node tests/field-concurrency.js && node tests/roads.js && node tests/osm.js && node tests/economy.js && node tests/progression.js && node tests/ui.js && node tests/smoke.js && node tests/projects.js && node tests/integration-v3.js && node tests/security-v3.js && node tests/concurrency-v3.js",
     "map:import": "node scripts/import-osm.js"
   },
   "engines": {
