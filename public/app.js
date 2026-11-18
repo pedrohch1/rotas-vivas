@@ -11,7 +11,7 @@ const canvas=$('map'),ctx=canvas.getContext('2d',{alpha:false});
 $('playerName').value=localStorage.getItem('rv-name')||'';
 $('roomCode').value=new URLSearchParams(location.search).get('sala')||localStorage.getItem('rv-room')||'';
 function notice(message,error=false){let el=document.createElement('div');el.className='toast'+(error?' error':'');el.textContent=message;$('toasts').append(el);setTimeout(()=>el.remove(),4600)}
-function send(action,details={}){if(!socket||socket.readyState!==1){notice('Sem conexão com a sala.',true);return;}socket.send(JSON.stringify({type:'action',action,...details}));}
+function send(action,details={}){if(!socket||socket.readyState!==1){notice('Sem conexão com a sala.',true);return;}if(action==='route'||action==='prepareDelivery')notice(action==='route'?'Calculando trajeto e tempo de chegada…':'Verificando carga e planejando entrega…');socket.send(JSON.stringify({type:'action',action,...details}));}
 function connect(){const name=$('playerName').value.trim(),code=$('roomCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);if(name.length<2||code.length<4){$('joinStatus').textContent='Informe nome e sala (4+ caracteres).';return;}
   const proto=location.protocol==='https:'?'wss:':'ws:';
   if(reconnectTimer)clearTimeout(reconnectTimer);if(socket)socket.close();socket=new WebSocket(proto+'//'+location.host+'/socket');const thisSocket=socket;$('joinStatus').textContent='Conectando...';
