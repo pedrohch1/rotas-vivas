@@ -4,12 +4,12 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b1619"><meta name="description" content="Rotas Vivas — um jogo cooperativo de geolocalização, projetos regionais, logística e economia.">
   <link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/guide-v7.css">
-  <title>Rotas Vivas — Alfa 0.7</title>
+  <title>Rotas Vivas — Alfa 0.8</title>
 </head>
 <body class="world-first mode-pc">
 <div class="app" id="app">
   <header class="topbar">
-    <div class="brand"><div class="brand-icon">↗</div><div><strong>ROTAS <em>VIVAS</em></strong><small>COOPERATIVA · ALFA 0.7</small></div></div>
+    <div class="brand"><div class="brand-icon">↗</div><div><strong>ROTAS <em>VIVAS</em></strong><small>COOPERATIVA · ALFA 0.8</small></div></div>
     <div class="top-stats">
       <div class="top-stat"><small>CAIXA DA EQUIPE</small><strong id="money">◆ 1.100</strong></div>
       <div class="top-stat"><small>PESQUISAS</small><strong id="intel">◈ 0</strong></div>
@@ -75,8 +75,8 @@
 <div class="modal-back hidden" id="helpModal">
  <div class="help-card"><div class="help-top"><h2>Guia de campo</h2><button class="circle-btn" id="closeHelp">×</button></div>
   <p>Esta versão é um <strong>protótipo funcional em desenvolvimento</strong>. Os locais industriais são fictícios, posicionados sobre um mapa real.</p>
-  <ol><li><strong>Comece na base.</strong> Construa a serraria (custa dinheiro e madeira) e produza tábuas.</li><li><strong>Escolha uma entrega.</strong> Na base, toque em “Preparar e partir”: o jogo carrega os itens necessários e traça a rota.</li><li><strong>Entregue contratos.</strong> Aproximar o caminhão da cidade permite concluir entregas.</li><li><strong>Reabasteça.</strong> Vá até florestas, pedreiras e pátios e colete até 10 unidades por viagem.</li><li><strong>Escolha o que fazer com sua descoberta.</strong> Após uma caminhada, você decide como ajudar a cooperativa.</li><li><strong>Use o GPS.</strong> No celular, participe de expedições de três pontos diferentes a pé. Cada percurso gera sinais de campo que liberam infraestrutura especial. Expedições remotas continuam disponíveis para a progressão básica, mas não produzem sinais de campo.</li></ol>
-  <p class="muted">Dirija com W/A/S/D ou selecione destinos: o piloto automático usa corredores virtuais, não as ruas reais. Projetos desbloqueados por pesquisas alteram a região. GPS requer HTTPS (ou localhost) e permissão. O protótipo não salva coordenadas de GPS exatas no servidor; armazena apenas identificadores criptográficos dos quadrantes explorados. Nunca jogue ao dirigir ou entre em áreas restritas.</p>
+  <ol><li><strong>Comece na base.</strong> Construa a serraria (custa dinheiro e madeira) e produza tábuas.</li><li><strong>Escolha uma entrega.</strong> Na base, toque em “Preparar e partir”: o jogo carrega os itens necessários e traça a rota.</li><li><strong>Entregue contratos.</strong> Aproximar o caminhão da cidade permite concluir entregas.</li><li><strong>Reabasteça.</strong> Vá até florestas, pedreiras e pátios e colete até 10 unidades por viagem.</li><li><strong>Escolha o que fazer com sua descoberta.</strong> Após uma caminhada, você decide como ajudar a cooperativa.</li><li><strong>Use o GPS.</strong> No celular, participe de expedições de três pontos diferentes a pé. Cada percurso gera sinais de campo que liberam infraestrutura especial. Expedições remotas levam cerca de 12 minutos até entregar a recompensa, continuam disponíveis para a progressão básica e não produzem sinais de campo.</li></ol>
+  <p class="muted">Dirija com W/A/S/D ou selecione destinos: o piloto automático usa uma rota de carro por ruas reais quando o serviço externo responde; caso contrário, utiliza a malha simulada. As previsões não incluem trânsito ao vivo. Projetos desbloqueados por pesquisas alteram a região. GPS requer HTTPS (ou localhost) e permissão. O protótipo não salva coordenadas de GPS exatas no servidor; armazena apenas identificadores criptográficos dos quadrantes explorados. Nunca jogue ao dirigir ou entre em áreas restritas.</p>
   <button class="btn primary" id="gotIt">Entendi, vamos jogar</button>
  </div>
 </div>
