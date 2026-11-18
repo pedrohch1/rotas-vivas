@@ -1,0 +1,46 @@
+/* Alfa 0.7 — guia simples, mundo central, gestão contextual e feedback. */
+.rv-panel-kicker{font-size:10px;font-weight:900;letter-spacing:.13em;color:#99b9b1}
+.rv-campaign,.rv-truck,.rv-guide{margin-bottom:12px;padding:14px;background:#142c2b;border:1px solid #40605a;border-radius:13px}
+.rv-campaign h3,.rv-guide h3{font-size:15px;color:#f0ffe8;line-height:1.35;margin:8px 0}
+.rv-campaign p,.rv-guide p{font-size:12px;color:#c1d6d0;line-height:1.55;margin:6px 0 12px}
+.rv-progress,.rv-load-bar{height:8px;background:#304943;border-radius:14px;overflow:hidden;margin:8px 0 11px}
+.rv-progress i,.rv-load-bar i{display:block;height:100%;background:linear-gradient(90deg,#5fd2a0,#b9ed8a);border-radius:14px;transition:width .3s ease}
+.rv-checks{display:grid;gap:8px;font-size:11px;color:#d4e5da}.rv-checks div{display:flex;gap:7px;align-items:flex-start}.rv-checks span{font-size:15px;color:#e9ca82;line-height:14px}.rv-checks .done span{color:#7ef2b7}.rv-checks .done{color:#b3d9bc}
+.rv-textbutton{background:none;border:0;color:#aaf2bc;cursor:pointer;padding:9px 0;text-align:left;font-size:11px;font-weight:750}
+.rv-truck-head{display:flex;justify-content:space-between;gap:5px;font-size:11px;font-weight:900}.rv-truck-head span:last-child{font-weight:600;color:#b9cdbf}
+.rv-loads{display:flex;gap:5px;flex-wrap:wrap;align-items:center}.rv-loads>span{background:#285047;color:#eaffeb;border-radius:7px;padding:6px 7px;font-size:11px}.rv-loads b{color:#b2f9a5}.rv-loads .rv-empty{background:transparent;padding:3px 0;color:#aabfba}
+.rv-route{border-top:1px solid #365954;padding-top:10px;margin-top:11px;display:flex;flex-direction:column;gap:3px}.rv-route b{font-size:12px}.rv-route small,.rv-eta-note{color:#afc8c2;font-size:10px}.rv-eta-note{display:block;margin-top:7px;opacity:.75}
+.rv-guide .btn{width:100%;margin-bottom:4px}.rv-guide .rv-textbutton{font-weight:500;color:#bfd6ce}
+.rv-more,.rv-guide-open{width:100%;margin:5px 0 14px;white-space:normal}.rv-guide-open{background:#18493a;color:#dcffdb}
+.rv-advanced{display:none!important}.rv-expanded .rv-advanced{display:block!important}
+.rv-float{position:absolute;top:25%;left:50%;z-index:30;transform:translateX(-50%);background:#194332;color:#f4ffe6;font-weight:850;border:1px solid #8ce4a5;border-radius:20px;padding:12px 16px;font-size:16px;pointer-events:none;opacity:0;white-space:nowrap;max-width:90%;overflow:hidden;text-overflow:ellipsis;box-shadow:0 9px 28px #103e3544}.rv-float.rv-pop{animation:rv-float 2.7s ease-out forwards}@keyframes rv-float{0%{opacity:0;transform:translate(-50%,10px) scale(.95)}15%{opacity:1;transform:translate(-50%,-8px) scale(1.04)}65%{opacity:1;transform:translate(-50%,-22px)}100%{opacity:0;transform:translate(-50%,-42px)}}
+.rv-pending{filter:brightness(1.25);box-shadow:0 0 0 2px #fff4;transform:scale(.99)}
+.rv-tour-back[hidden]{display:none!important}.rv-tour-back{position:fixed;inset:0;z-index:300;background:#071714c9;backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:18px}.rv-tour{width:min(520px,100%);background:#102727;border:1px solid #4f7b63;border-radius:18px;color:#f0ffec;padding:23px;box-shadow:0 23px 80px #0008}.rv-tour-upper{display:flex;justify-content:space-between;align-items:center;color:#9dc4b2;font-size:11px;letter-spacing:.16em}.rv-tour-upper button{font-size:26px;background:none;border:0;color:#fff}.rv-tour-icon{font-size:36px;margin-top:10px}.rv-tour h2{font-size:23px;margin:9px 0 12px}.rv-tour p{font-size:14px;line-height:1.7;color:#d2e5d9}.rv-tour-tip{border-left:3px solid #8fe9aa;background:#1b3b34;display:flex;flex-direction:column;gap:5px;padding:12px;margin-top:18px}.rv-tour-tip strong{font-size:10px;letter-spacing:.12em;color:#a7f4bc}.rv-tour-tip span{font-size:12px;line-height:1.5;color:#d0ecd6}.rv-tour-dots{display:flex;gap:6px;margin:20px 0}.rv-tour-dots span{background:#496056;height:6px;width:21px;border-radius:9px}.rv-tour-dots .active{background:#a7eda4}.rv-tour-foot{display:flex;justify-content:space-between;gap:8px;align-items:center}.rv-tour-foot>span{font-size:12px;color:#a9c8bc}.rv-tour-foot>div{display:flex;gap:7px}
+@media(min-width:1100px){
+ body.world-first.mode-pc .layout{display:grid;grid-template-columns:minmax(243px,275px) minmax(420px,1fr) minmax(262px,310px);height:calc(100dvh - 63px);min-height:0}
+ body.world-first.mode-pc .sidebar{position:relative!important;display:block!important;top:auto!important;bottom:auto!important;width:auto!important;max-height:none!important;box-shadow:none!important;overflow-y:auto;background:#0e2424}
+ body.world-first.mode-pc .leftbar{border-right:1px solid #547567}body.world-first.mode-pc .rightbar{border-left:1px solid #547567}
+ body.world-first.mode-pc .world{height:calc(100dvh - 63px);padding:9px;min-height:0}
+ body.world-first.mode-pc .panel-close{display:none!important}
+ body.world-first.mode-pc .map-frame{min-height:220px}
+ body.world-first.mode-pc .goal-strip{font-size:11px}
+ body.world-first.mode-pc #panelToggle{display:none}
+ body.world-first.mode-pc .rv-truck{position:sticky;top:0;z-index:3;background:#14352e}
+}
+@media(max-width:1099px){
+ .rv-campaign,.rv-guide,.rv-truck{font-size:12px}
+ .rv-tour{padding:17px}
+ .rv-tour h2{font-size:20px}
+ .rv-tour p{font-size:13px}
+ .rv-float{font-size:13px;top:30%}
+ .world-first.panels-open .leftbar{display:none}
+}
+@media(max-width:620px){.rv-tour-foot{flex-wrap:wrap}.rv-tour-foot>div{width:100%}.rv-tour-foot button{flex:1}.rv-float{max-width:88%;white-space:normal;text-align:center}}
+
+#rvMobileBase{display:none}
+@media(max-width:1099px){
+ #rvMobileBase{display:inline-flex;align-items:center}
+ .world-first.rv-base-open .leftbar{display:block!important;position:fixed;left:0;top:56px;bottom:0;z-index:80;width:min(360px,100vw);max-height:none;overflow:auto;box-shadow:8px 0 20px #0008}
+ .world-first.rv-base-open .rightbar{display:none!important}
+ .world-first.rv-base-open .world{filter:brightness(.65)}
+}
