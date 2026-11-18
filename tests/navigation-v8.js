@@ -1,0 +1,20 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {parseDrivingRoute,fetchDrivingRoute,enrichRoute,lineLength}=require('../navigation');
+const a={lat:-23.830,lng:-46.720},b={lat:-23.831,lng:-46.730};
+const payload={code:'Ok',routes:[{distance:1550,duration:250,geometry:{coordinates:[[-46.720,-23.830],[-46.725,-23.831],[-46.730,-23.831]]}}]};
+const route=parseDrivingRoute(payload,a,b);
+assert.equal(route.source,'osm-driving');assert.equal(route.meters,1550);assert.equal(route.durationSeconds,250);
+assert.equal(route.points.at(-1).lng,b.lng);
+assert.equal(parseDrivingRoute({...payload,routes:[{...payload.routes[0],duration:-1}]},a,b),null);
+assert.equal(parseDrivingRoute({...payload,routes:[{...payload.routes[0],geometry:{coordinates:[[0,0],[1,1]]}}]},a,b),null);
+assert.ok(enrichRoute(a,route).pace>0);assert.ok(lineLength(a,route.points)>900);
+(async()=>{
+ process.env.ROUTING_ENABLED='1';let requests=0;
+ const another={lat:-23.8315,lng:-46.7302};
+ const mocked=async()=>{requests++;return {ok:true,json:async()=>({...payload,routes:[{...payload.routes[0],geometry:{coordinates:[[-46.72,-23.83],[-46.7302,-23.8315]]}}]})}};
+ const first=await fetchDrivingRoute(a,another,mocked),second=await fetchDrivingRoute(a,another,mocked);
+ assert.ok(first);assert.equal(requests,1);assert.equal(second,first);
+ process.env.ROUTING_ENABLED='0';assert.equal(await fetchDrivingRoute(a,another,mocked),null);
+ console.log('OK: rotas de carro, distância, ETA, geometria, cache e fallback.');
+})().catch(e=>{console.error(e);process.exitCode=1});
