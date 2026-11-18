@@ -2,7 +2,7 @@
 // Testes de integração com Node.js puro. Executar: npm test
 const assert=require('node:assert/strict');const {spawn}=require('node:child_process');const fs=require('node:fs');const path=require('node:path');
 const port=32000+Math.floor(Math.random()*3000),code='T'+Math.random().toString(36).slice(2,7).toUpperCase();
-const server=spawn(process.execPath,['server.js'],{cwd:path.join(__dirname,'..'),env:{...process.env,PORT:String(port),DRIVE_SPEED:'5000'},stdio:['ignore','pipe','pipe']});
+const server=spawn(process.execPath,['server.js'],{cwd:path.join(__dirname,'..'),env:{...process.env,PORT:String(port),DRIVE_SPEED:'5000',REMOTE_EXPEDITION_MS:'1000',ROUTING_ENABLED:'0'},stdio:['ignore','pipe','pipe']});
 const clients=[];let seq=0;
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function client(name,token){const socket=new WebSocket(`ws://127.0.0.1:${port}/socket`);clients.push(socket);
