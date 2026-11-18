@@ -11,7 +11,7 @@ const {grantMission,expireMissions}=require('./missions');
 const PROGRESSION=require('./progression');
 const FIELD=require('./field');
 const {loadNetwork,buildAdjacency,routeOnNetwork}=require('./osmroads');
-const DRIVE_SPEED=Math.max(35,Math.min(5000,Number(process.env.DRIVE_SPEED)||140));
+const DRIVE_SPEED=Math.max(5,Math.min(5000,Number(process.env.DRIVE_SPEED)||25));
 const ECONOMY_STEP_MS=Math.max(1000,Math.min(600000,Number(process.env.ECONOMY_STEP_MS)||22000));
 const PORT=Number(process.env.PORT||3000);
 const ROOT=path.join(__dirname,'public');
@@ -45,6 +45,7 @@ const DISCOVERY={infra:'Infraestrutura',comercio:'Comércio regional',natureza:'
 const RES={madeira:{name:'Madeira',emoji:'🪵',price:15},minerio:{name:'Minério',emoji:'🪨',price:22},sucata:{name:'Sucata',emoji:'🔩',price:18},tabuas:{name:'Tábuas',emoji:'🪚',price:48},metal:{name:'Metal',emoji:'⚙️',price:65}};
 const CONTRACT_CYCLE=[['palmeiras','tabuas',6],['serra','metal',5],['lago','madeira',12],['palmeiras','metal',3],['serra','tabuas',9],['lago','sucata',11],['palmeiras','madeira',13],['lago','metal',6]];
 let saveDirty=new Set();
+function effect(ws,kind,message,resource=null,amount=0){send(ws,{type:'effect',kind,message,resource,amount});}
 function log(world,message){world.logs.unshift({time:Date.now(),text:message});world.logs=world.logs.slice(0,28)}
 function createWorld(code){
  const world={code,createdAt:Date.now(),updatedAt:Date.now(),money:1100,reputation:0,intel:0,day:1,priceWave:0,
@@ -59,7 +60,7 @@ function addContract(w){return ECO.addContract(w,CONTRACT_CYCLE,RES);}
 function upgradeWorld(w){
  // Migração de salvamentos existentes da Alfa 0.1 sem perda de estoque, contratos ou progresso.
  w.factoryActive??={serraria:false,fundicao:false};w.discoveries??={infra:0,comercio:0,natureza:0};
- w.surveys??=0;w.milestones??={};w.event??=null;w.owner??=Object.keys(w.players||{})[0]||null;
+ w.surveys??=0;w.milestones??={};w.campaign??={chapter:1,finished:[]};w.campaign.chapter??=1;w.campaign.finished??=[];w.event??=null;w.owner??=Object.keys(w.players||{})[0]||null;
  FIELD.migrate(w);w.upgrades??={fleet:false,navigation:false,network:false};w.pings??=[];w.chat??=[];w.missions??=[];PROGRESSION.init(w);w.missionSeq??=Math.max(1,...w.missions.map(m=>m.id+1));
  w.towns.forEach(t=>ECO.initTown(t));for(const c of w.contracts)c.deadlineDay??=w.day+35;
  w.projects??=PROJECTS.map(pr=>({...pr,delivered:{},funded:false,completed:false}));
@@ -69,6 +70,19 @@ function upgradeWorld(w){
   if(player.route&&!Array.isArray(player.route.points))player.route=null;
   player.mode??='pc';}
  return w;
+}
+
+function advanceCampaign(w){
+ const c=w.campaign||(w.campaign={chapter:1,finished:[]});
+ const d=w.towns.reduce((a,t)=>a+(t.delivered||0),0);
+ const works=w.projects.filter(p=>p.completed).length;
+ const level=c.chapter||1;
+ let done=false,title='';
+ if(level===1&&w.milestones.primeiraProducao&&w.milestones.primeiraEntrega){done=true;title='Primeira rede de abastecimento';}
+ if(level===2&&d>=35&&works>=1){done=true;title='Primeira ligação regional';}
+ if(level===3&&w.towns.every(t=>t.prosperity>=65)&&works>=2){done=true;title='Cidades fortalecidas';}
+ if(done){c.finished.push({chapter:level,title,at:Date.now()});c.chapter=level+1;w.money+=320;w.intel+=3;w.reputation+=15;
+  log(w,'🏅 Capítulo '+level+' concluído: '+title+'! +320 créditos, +3 pesquisas e +15 reputação.');dirty(w);}
 }
 function rewardMilestone(w,id,message,credits,reputation=0,intel=0){
  if(w.milestones[id])return;w.milestones[id]=true;w.money+=credits;w.reputation+=reputation;w.intel+=intel;
@@ -109,10 +123,10 @@ function ensurePlayer(ws){if(!ws.player||!ws.world||!ws.world.players[ws.player]
 function inventoryQty(o){return Object.values(o).reduce((a,b)=>a+b,0)}
 function price(w,t,type){return ECO.townPrice(w,t,type,RES)}
 function activeCount(w){return Object.values(w.players).filter(p=>p.online).length}
-function safeWorld(w){const {scanned,field:privateField,...rest}=w;const sites=[{id:'base',...BASE},...w.nodes,...w.towns,...w.projects];const road=OSM_ROADS?{points:{},edges:[]}:graph(sites,!!w.projects.find(p=>p.id==='ponte')?.completed);return {...rest,field:FIELD.publicBoard(w),roads:road,roadMode:OSM_ROADS?'osm':'virtual',markets:Object.fromEntries(w.towns.map(t=>[t.id,Object.fromEntries(Object.keys(RES).map(r=>[r,price(w,t,r)]))])),players:Object.fromEntries(Object.entries(w.players).map(([id,p])=>{const {token,lastGps,lastVirtual,lastManual,lastChat,lastPing,fieldExpedition,fieldDecision,poiLastCell,...safe}=p;return [id,{...safe,fieldStatus:FIELD.publicPlayer(p)}]}))}}
+function safeWorld(w){const {scanned,field:privateField,...rest}=w;const sites=[{id:'base',...BASE},...w.nodes,...w.towns,...w.projects];const road=OSM_ROADS?{points:{},edges:[]}:graph(sites,!!w.projects.find(p=>p.id==='ponte')?.completed);return {...rest,routeSpeed:DRIVE_SPEED,field:FIELD.publicBoard(w),roads:road,roadMode:OSM_ROADS?'osm':'virtual',markets:Object.fromEntries(w.towns.map(t=>[t.id,Object.fromEntries(Object.keys(RES).map(r=>[r,price(w,t,r)]))])),players:Object.fromEntries(Object.entries(w.players).map(([id,p])=>{const {token,lastGps,lastVirtual,lastManual,lastChat,lastPing,fieldExpedition,fieldDecision,poiLastCell,...safe}=p;return [id,{...safe,fieldStatus:FIELD.publicPlayer(p)}]}))}}
 function packJSON(obj){const data=Buffer.from(JSON.stringify(obj));if(data.length>65536)throw Error('Payload grande');let h;if(data.length<126){h=Buffer.from([0x81,data.length])}else if(data.length<65536){h=Buffer.alloc(4);h[0]=0x81;h[1]=126;h.writeUInt16BE(data.length,2)}else{h=Buffer.alloc(10);h[0]=0x81;h[1]=127;h.writeBigUInt64BE(BigInt(data.length),2)}return Buffer.concat([h,data])}
 function send(ws,obj){if(ws.socket&&!ws.socket.destroyed){try{ws.socket.write(packJSON(obj))}catch{}}}
-function broadcast(w){const snapshot=safeWorld(w);for(const ws of sockets)if(ws.world?.code===w.code)send(ws,{type:'state',you:ws.player,world:snapshot,online:activeCount(w),myField:ws.player?FIELD.privateStatus(w.players[ws.player]):null})}
+function broadcast(w){advanceCampaign(w);const snapshot=safeWorld(w);for(const ws of sockets)if(ws.world?.code===w.code)send(ws,{type:'state',you:ws.player,world:snapshot,online:activeCount(w),myField:ws.player?FIELD.privateStatus(w.players[ws.player]):null})}
 function toast(ws,message,error=false){send(ws,{type:'notice',message,error})}
 function connect(ws,msg){const code=String(msg.room||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
  const name=capText(msg.name,20);const token=capText(msg.token,80);
@@ -173,7 +187,7 @@ function act(ws,msg){const w=ws.world;const p=ensurePlayer(ws);const type=msg.ac
   if(qty<=0)throw Error('Sem estoque ou caminhão cheio.');
   node.stock-=qty;p.cargo[node.type]=(p.cargo[node.type]||0)+qty;
   if(node.type==='sucata')PROGRESSION.advance(w,'recovery',qty,message=>log(w,message));
-  log(w,`${p.name} coletou ${qty} × ${RES[node.type].name}.`);dirty(w);broadcast(w);return;
+  log(w,`${p.name} coletou ${qty} × ${RES[node.type].name}.`);effect(ws,'collect',`+${qty} ${RES[node.type].name} no caminhão`,node.type,qty);dirty(w);broadcast(w);return;
  }
  if(type==='load'){
   if(!near(p,BASE))throw Error('Retorne ao depósito da cooperativa.');
@@ -181,13 +195,13 @@ function act(ws,msg){const w=ws.world;const p=ensurePlayer(ws);const type=msg.ac
   const requested=Number(msg.qty);if(!Number.isInteger(requested)||requested<1||requested>32)throw Error('Quantidade inválida (1 a 32).');
   const qty=Math.min(requested,w.inventory[r]||0,(w.factories.logistica?32:20)+(w.upgrades.fleet?12:0)-inventoryQty(p.cargo));
   if(qty<=0)throw Error('Estoque insuficiente ou caminhão cheio.');
-  w.inventory[r]-=qty;p.cargo[r]=(p.cargo[r]||0)+qty;log(w,`${p.name} carregou ${qty} × ${RES[r].name}.`);dirty(w);broadcast(w);return;
+  w.inventory[r]-=qty;p.cargo[r]=(p.cargo[r]||0)+qty;log(w,`${p.name} carregou ${qty} × ${RES[r].name}.`);effect(ws,'load',`+${qty} ${RES[r].name} carregados`,r,qty);dirty(w);broadcast(w);return;
  }
  if(type==='unload'){
   if(!near(p,BASE))throw Error('Descarregue somente no depósito.');
   let total=inventoryQty(p.cargo);if(!total)throw Error('Caminhão vazio.');
   for(const [r,q] of Object.entries(p.cargo))w.inventory[r]=(w.inventory[r]||0)+q;
-  p.cargo={};log(w,`${p.name} descarregou ${total} unidades.`);dirty(w);broadcast(w);return;
+  p.cargo={};log(w,`${p.name} descarregou ${total} unidades.`);effect(ws,'unload',`${total} unidades transferidas ao depósito`);dirty(w);broadcast(w);return;
  }
  if(type==='build'){
   if(!near(p,BASE))throw Error('Volte à base para construir.');
@@ -196,7 +210,7 @@ function act(ws,msg){const w=ws.world;const p=ensurePlayer(ws);const type=msg.ac
   if(w.factories[key])throw Error('Projeto já construído.');if(w.money<c.money||w.intel<c.intel)throw Error('Faltam créditos ou inteligência.');
   for(const [r,q] of Object.entries(c)){if(r!=='money'&&r!=='intel'&&(w.inventory[r]||0)<q)throw Error(`Falta ${RES[r].name}.`)}
   w.money-=c.money;w.intel-=c.intel;for(const [r,q] of Object.entries(c)){if(r!=='money'&&r!=='intel')w.inventory[r]-=q;}
-  w.factories[key]=true;if(key==='serraria')rewardMilestone(w,'primeiraIndustria','primeira indústria construída',90);log(w,`${p.name} construiu: ${key==='serraria'?'Serraria':key==='fundicao'?'Fundição':'Centro logístico'}.`);dirty(w);broadcast(w);return;
+  w.factories[key]=true;if(key==='serraria')rewardMilestone(w,'primeiraIndustria','primeira indústria construída',90);log(w,`${p.name} construiu: ${key==='serraria'?'Serraria':key==='fundicao'?'Fundição':'Centro logístico'}.`);effect(ws,'build',`Construção concluída: ${key}`);dirty(w);broadcast(w);return;
  }
  if(type==='toggleFactory'){
   const name=String(msg.factory);if(!['serraria','fundicao'].includes(name)||!w.factories[name])throw Error('Instalação inexistente.');
@@ -208,7 +222,7 @@ function act(ws,msg){const w=ws.world;const p=ensurePlayer(ws);const type=msg.ac
   if(!recipe)throw Error('Receita inválida.');if(!w.factories[recipe.factory])throw Error('Construa a instalação primeiro.');
   const max=Math.min(5,Math.floor((w.inventory[recipe.input]||0)/recipe.need));if(max<1)throw Error('Matéria-prima insuficiente no depósito.');
   w.inventory[recipe.input]-=max*recipe.need;w.inventory[recipe.output]+=max;
-  PROGRESSION.advance(w,'production',max,message=>log(w,message));rewardMilestone(w,'primeiraProducao','primeiro lote produzido',40);log(w,`${p.name} produziu ${max} × ${RES[recipe.output].name}.`);dirty(w);broadcast(w);return;
+  PROGRESSION.advance(w,'production',max,message=>log(w,message));rewardMilestone(w,'primeiraProducao','primeiro lote produzido',40);log(w,`${p.name} produziu ${max} × ${RES[recipe.output].name}.`);effect(ws,'craft',`+${max} ${RES[recipe.output].name} produzidos`,recipe.output,max);dirty(w);broadcast(w);return;
  }
  // Atalho amigável: prepara um contrato ou operação, carrega exatamente o necessário
  // e parte pelas estradas. Não remove materiais se falta estoque, capacidade ou rota.
@@ -229,7 +243,7 @@ function act(ws,msg){const w=ws.world;const p=ensurePlayer(ws);const type=msg.ac
   if(missing){w.inventory[resource]-=missing;p.cargo[resource]=(p.cargo[resource]||0)+missing;}
   commitRoute(p,town,planned);
   log(w,`🚚 ${p.name} preparou ${job.qty} × ${RES[resource].name} e saiu para ${town.name}.`);
-  dirty(w);toast(ws,`Carga pronta! Caminhão a caminho de ${town.name}. Ao chegar, conclua a entrega.`);broadcast(w);return;
+  dirty(w);effect(ws,'route',`Carga pronta: ${job.qty} ${RES[resource].name}. Partindo para ${town.name}.`,resource,missing);broadcast(w);return;
  }
  if(type==='contract'){
   const contract=w.contracts.find(c=>c.id===msg.id);if(!contract)throw Error('Contrato já concluído.');
@@ -239,13 +253,13 @@ function act(ws,msg){const w=ws.world;const p=ensurePlayer(ws);const type=msg.ac
   const contractReward=Math.round(contract.reward*(w.field.projects.feira?1.1:1));w.money+=contractReward;w.reputation+=8;ECO.delivery(town,contract.type,contract.qty);
   PROGRESSION.advance(w,'deliveries',contract.qty,message=>log(w,message));rewardMilestone(w,'primeiraEntrega','primeiro contrato concluído',110,3,1);
   w.contracts=w.contracts.filter(c=>c!==contract);addContract(w);
-  log(w,`✓ ${p.name} concluiu contrato em ${town.name}: +${contractReward} créditos.`);dirty(w);broadcast(w);return;
+  log(w,`✓ ${p.name} concluiu contrato em ${town.name}: +${contractReward} créditos.`);effect(ws,'delivery',`Contrato concluído: +${contractReward} créditos e +8 reputação`);dirty(w);broadcast(w);return;
  }
  if(type==='sell'){
   const town=w.towns.find(t=>t.id===msg.town);if(!town||!near(p,town))throw Error('Estacione perto de uma cidade.');
   const r=String(msg.resource);const qty=p.cargo[r]||0;if(!RES[r]||qty<1)throw Error('Não há este item no caminhão.');
   const credits=qty*price(w,town,r);w.money+=credits;ECO.delivery(town,r,qty);PROGRESSION.advance(w,'deliveries',qty,message=>log(w,message));delete p.cargo[r];
-  log(w,`${p.name} vendeu ${qty} × ${RES[r].name} em ${town.name}: +${credits} créditos.`);dirty(w);broadcast(w);return;
+  log(w,`${p.name} vendeu ${qty} × ${RES[r].name} em ${town.name}: +${credits} créditos.`);effect(ws,'delivery',`Venda concluída: +${credits} créditos`);dirty(w);broadcast(w);return;
  }
  if(type==='poiVisit'){const result=FIELD.visitPoint(w,p,msg);grantMission(w,result.kind,message=>log(w,message),p.name+' (local público)');log(w,`🏙️ ${p.name} descobriu um ponto público de ${result.kind}.`);dirty(w);toast(ws,result.message);broadcast(w);return;}
  if(type==='fieldDispatch'){const result=FIELD.dispatch(w,String(msg.dispatch||''));if(result.key==='rota'){const mission=grantMission(w,'comercio',message=>log(w,message),p.name+' (dados de campo)');if(!mission){w.field.signals+=FIELD.DISPATCHES.rota.cost;throw Error('Já há uma operação semelhante em aberto. Guarde o sinal para depois.');}}log(w,`📡 ${p.name} ativou ${FIELD.DISPATCHES[result.key].name}.`);dirty(w);toast(ws,result.message);broadcast(w);return;}
@@ -289,7 +303,7 @@ function act(ws,msg){const w=ws.world;const p=ensurePlayer(ws);const type=msg.ac
   if((p.cargo[m.resource]||0)<m.qty)throw Error('Carregamento insuficiente para esta operação.');
   p.cargo[m.resource]-=m.qty;if(!p.cargo[m.resource])delete p.cargo[m.resource];
   ECO.delivery(town,m.resource,m.qty);PROGRESSION.advance(w,'deliveries',m.qty,message=>log(w,message));w.money+=m.reward;w.reputation+=5;w.intel+=2;w.missions=w.missions.filter(x=>x!==m);
-  log(w,'⭐ '+p.name+' concluiu '+m.title+': +'+m.reward+' créditos, +2 pesquisas e +5 reputação.');dirty(w);broadcast(w);return;
+  log(w,'⭐ '+p.name+' concluiu '+m.title+': +'+m.reward+' créditos, +2 pesquisas e +5 reputação.');effect(ws,'delivery',`Operação concluída: +${m.reward} créditos e +2 pesquisas`);dirty(w);broadcast(w);return;
  }
  if(type==='removePlayer'){
   if(w.owner!==p.id)throw Error('Somente o fundador pode liberar uma vaga.');const id=String(msg.player||'');
